@@ -1,85 +1,46 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, TensorDataset
 import numpy as np
 
-class LidDrivenDataset(Dataset):
+class LidDrivenDataset:
     """
-    Custom dataset for loading and processing Lid Driven Cavity problem data from .npz files.
+    Handles loading of Lid Driven Cavity problem data from .npz files
+    and provides dataloaders for training and validation sets.
     """
-    def __init__(self, file_path_x, file_path_y, transform=None):
+    def __init__(self, file_path_x_train, file_path_x_valid,
+                 file_path_y_train, file_path_y_valid, transform=None):
         """
-        Initializes the dataset with the paths to the .npz files and an optional transform.
-        
-        Args:
-            file_path_x (str): Path to the .npz file containing the input data.
-            file_path_y (str): Path to the .npz file containing the target data.
-            transform (callable, optional): Optional transform to be applied on a sample.
+        Initializes the dataset from given training and validation files.
         """
-        # Load data from .npz files
-        x = np.load(file_path_x)['data']
-        y = np.load(file_path_y)['data']
-        #self.x = np.load(file_path_x)['data']
-        #self.y = np.load(file_path_y)['data']
+        # Load data
+        x_train = np.load(file_path_x_train)
+        y_train = np.load(file_path_y_train)
+        x_valid = np.load(file_path_x_valid)
+        y_valid = np.load(file_path_y_valid)
 
-        
-        # Convert numpy arrays to PyTorch tensors
-        self.x = torch.tensor(x, dtype=torch.float32)
-        self.y = torch.tensor(y, dtype=torch.float32)
-        
+        # Convert to tensors and select channels
+        self.x_train = torch.tensor(x_train[:, [0, 2]], dtype=torch.float32)
+        self.y_train = torch.tensor(y_train[:, [0, 1, 2]], dtype=torch.float32)
+        self.x_valid = torch.tensor(x_valid[:, [0, 2]], dtype=torch.float32)
+        self.y_valid = torch.tensor(y_valid[:, [0, 1, 2]], dtype=torch.float32)
+
         self.transform = transform
 
-    def __len__(self):
+    def create_dataloader(self, batch_size=100, shuffle=True):
         """
-        Returns the total number of samples in the dataset.
-        """
-        return self.x.shape[0]
+        Creates DataLoaders for train and validation sets.
 
-    def __getitem__(self, idx):
-        """
-        Retrieves the sample and its label at the specified index.
-        
-        Args:
-            idx (int): Index of the sample to retrieve.
-        
         Returns:
-            tuple: (sample, target) where sample is the input data and target is the expected output.
+            train_loader, val_loader: PyTorch DataLoaders
         """
-        sample = self.x[idx]
-        target = self.y[idx]
-        #sample = torch.tensor(self.x[idx], dtype=torch.float32)
-        #target = torch.tensor(self.y[idx], dtype=torch.float32)
-        
         if self.transform:
-            sample = self.transform(sample)
-        
-        return sample, target
-    
-    def create_dataloader(self, batch_size, split_fraction=0.8, shuffle=True):
-        """
-        Creates and returns data loaders for training and validation sets.
+            self.x_train = self.transform(self.x_train)
+            self.x_valid = self.transform(self.x_valid)
 
-        Args:
-            batch_size (int): Batch size for the data loaders.
-            split_fraction (float, optional): Fraction of the dataset to use for training. Default is 0.8.
-            shuffle (bool, optional): Whether to shuffle the dataset before splitting. Default is True.
-
-        Returns:
-            tuple: (train_loader, val_loader) where train_loader is the data loader for the training set
-                   and val_loader is the data loader for the validation set.
-        """
-        dataset_size = len(self)
-        train_size = int(dataset_size * split_fraction)
-        val_size = dataset_size - train_size
-
-        train_dataset, val_dataset = torch.utils.data.random_split(self, [train_size, val_size])
+        train_dataset = TensorDataset(self.x_train, self.y_train)
+        val_dataset = TensorDataset(self.x_valid, self.y_valid)
 
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=shuffle)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=shuffle)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
         return train_loader, val_loader
-
-# Example usage:
-# dataset = LidDrivenDataset(
-#     file_path_x='../../../../../rtali/projects/all-neural-operators/TimeDependentNS/LidData_Curated_Input/harmonics/harmonics_lid_driven_cavity_X.npz',
-#     file_path_y='../../../../../rtali/projects/all-neural-operators/TimeDependentNS/LidData_Curated_Input/harmonics/harmonics_lid_driven_cavity_y.npz'
-# 

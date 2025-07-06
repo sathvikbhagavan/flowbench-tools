@@ -71,7 +71,9 @@ class TensorizedFNO(nn.Module):
         else:
             latest_checkpoint = os.path.join(save_folder, f'{save_name}.pth')
 
-        self.load_state_dict(torch.load(latest_checkpoint))
+        checkpoint = torch.load(latest_checkpoint, weights_only=False)
+        self.load_state_dict(checkpoint, strict=False)
+        # self.load_state_dict(torch.load(latest_checkpoint, weights_only=False))
 
 # Example usage:
 # model = TensorizedFNO(n_modes=(16, 16), hidden_channels=64, in_channels=1, out_channels=1)

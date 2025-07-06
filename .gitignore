@@ -1,0 +1,6 @@
+**/__pycache__/
+*.out
+logs.txt
+wandb/
+experiments/
+*.pyc
